@@ -24,7 +24,7 @@ DHT SENSOR
 #define VOLDOWN 0xFFA857
 #define UP      0xFF906F
 #define EQ      0xFF9867
-#define ST/REPT 0xFFB04F
+#define STREPT 0xFFB04F
 #define ZERO    0xFF6897
 #define ONE     0xFF30CF
 #define TWO     0xFF18E7
@@ -100,16 +100,14 @@ void loop(){
   temperature = (voltage - 0.5) * 100 ;  
   */
   
-  //Print to LCD 
-    lcd.clear();
+  	//Print to LCD 
     lcd.setCursor(0, 0);
-    lcd.print("Temp = ");
     lcd.print(temperature);
     lcd.print(" C ");
 
     switch(on){
       case true:
-        lcd.print("ON");
+        lcd.print("ON ");
         break;
       case false:
         lcd.print("OFF");
@@ -117,10 +115,11 @@ void loop(){
     }
     
     lcd.setCursor(0,1);
+  	lcd.print("SET ");
     lcd.print(setTemp);
     lcd.print(" C");
   
-    lcd.setCursor(6,1);
+    lcd.setCursor(9,1);
     lcd.print("%");
     lcd.print(setHumid);
     
