@@ -156,13 +156,20 @@ void loop(){
               setTemp++;
               break;
             case 1:
-              setHumid++
+              setHumid++;
               break;
           }
           break;
         
         case VOLDOWN:
-          setTemp--;
+          switch(control){
+            case 0:
+              setTemp--;
+              break;
+            case 1:
+              setHumid--;
+              break;
+          }
           break;
           
         case FUNC:
