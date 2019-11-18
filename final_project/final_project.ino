@@ -55,6 +55,10 @@ int setTemp = 30;
 int setHumid = 45;
 bool manualOn = false; //Manual overide for on
 bool on = false; //off by default
+//Determines which variable the VOL buttons change
+//0: setTemp
+//1: setHumid
+int control = 0;
 
 //Relay Pin 13;
 int relay = 13; 
@@ -115,20 +119,20 @@ void loop(){
     }
     
     lcd.setCursor(0,1);
-  	lcd.print("SET ");
+  	lcd.print("FAN ON AT ");
     lcd.print(setTemp);
     lcd.print(" C");
   
     lcd.setCursor(9,1);
-    lcd.print("%");
     lcd.print(setHumid);
+    lcd.print("%");
     
     
   
   //Relay condition to fan
     if(temperature > setTemp || humidity > setHumid || manualOn) {
       if(!on){
-        digitalWrite(relay, HIGH); 
+        digitalWrite(relay, HIGH);
         on = true;
       }
     } else {
@@ -147,11 +151,35 @@ void loop(){
           break;
         
         case VOLUP:
-          setTemp++;
+          switch(control){
+            case 0:
+              setTemp++;
+              break;
+            case 1:
+              setHumid++
+              break;
+          }
           break;
         
         case VOLDOWN:
           setTemp--;
+          break;
+          
+        case FUNC:
+          control=control+1)%2;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("VOL BUTTONS CONTROL ");
+          lcd.setCursor(0, 1);
+          switch(control){
+            case 0:
+              lcd.print("TEMP THRESHOLD (AUTO)");
+              break;
+            case 1:
+              lcd.print("HUMID% THRESHOLD (AUTO)");
+              break;
+          }
+          delay(5000);
           break;
         
         case ONE: 
