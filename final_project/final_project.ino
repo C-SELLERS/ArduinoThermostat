@@ -37,6 +37,9 @@ DHT SENSOR
 #define NINE    0xFF52AD
 #define HOLD    0xFFFFFFFF
 
+//Definition for volume button mapping
+#define CONTROLTEMP   0
+#define CONTROLHUMID1
  
 //Initialize LCD Screen
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
@@ -54,11 +57,8 @@ float humidity;
 int setTemp = 30;
 int setHumid = 45;
 bool manualOn = false; //Manual overide for on
-bool on = false; //off by default
-//Determines which variable the VOL buttons change
-//0: setTemp
-//1: setHumid
-int control = 0;
+bool on = false; //Current signal to fan
+int volButtonMapping = CONTROLTEMP; //Indicate which threshold VOL buttons will change
 
 //Relay Pin 13;
 int relay = 13; 
@@ -150,40 +150,44 @@ void loop(){
           manualOn = !manualOn;
           break;
         
+        //Raise the threshold indicated by volButtonMapping
         case VOLUP:
-          switch(control){
-            case 0:
+          switch(volButtonMapping){
+            case CONTROLTEMP:
               setTemp++;
               break;
-            case 1:
+            case CONTROLHUMID:
               setHumid++;
               break;
           }
+          printThresholdChange();
           break;
-        
+
+        //Lower the threshold indicated by volButtonMapping
         case VOLDOWN:
-          switch(control){
-            case 0:
+          switch(volButtonMapping){
+            case CONTROLTEMP:
               setTemp--;
               break;
-            case 1:
+            case CONTROLHUMID:
               setHumid--;
               break;
           }
+          printThresholdChange();
           break;
           
         case FUNC:
-          control=control+1)%2;
+          volButtonMapping=volButtonMapping+1)%2;
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("VOL BUTTONS CONTROL ");
           lcd.setCursor(0, 1);
-          switch(control){
-            case 0:
-              lcd.print("TEMP THRESHOLD (AUTO)");
+          switch(volButtonMapping){
+            case CONTROLTEMP:
+              lcd.print("DESIRED TEMP (AUTO)");
               break;
-            case 1:
-              lcd.print("HUMID% THRESHOLD (AUTO)");
+            case CONTROLHUMID:
+              lcd.print("DESIRED HUMID% (AUTO)");
               break;
           }
           delay(5000);
@@ -240,4 +244,22 @@ static bool measure_environment( float *temperature, float *humidity ) {
       }
     }
     return(false);
+}
+
+void printThresholdChange() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("IN AUTO MODE, FAN ON AT ");
+  lcd.setCursor(0,1);
+  switch(volButtonMapping) {
+    case CONTROLTEMP:
+      lcd.print(setTemp);
+      lcd.print("C");
+      break;
+    case CONTROLHUMID:
+      lcd.print(setHumid);
+      lcd.print("% HUMIDITY");
+      break;
+  }
+  delay(2000);
 }
