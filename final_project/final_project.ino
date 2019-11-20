@@ -154,16 +154,25 @@ void loop(){
             //Manual off goes to manual on
             if(!manualOn) {
               manualOn = true;
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("MANUAL ON");
             }
             //Manual on goes to auto
             else {
               mode = AUTO;
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("AUTO");
             }
           }
           //Auto goes to manual off
           else {
             mode = MANUAL;
             manualOn = false;
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("MANUAL OFF");
           }
           break;
         
