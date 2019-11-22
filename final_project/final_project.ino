@@ -135,10 +135,10 @@ void loop(){
     
   
   //Relay condition to fan
-    if(mode = AUTO) {
+    if(mode == AUTO) {
       if(temperature > setTemp || humidity > setHumid) turnOn();
       else turnOff();
-    } else if(mode = MANUAL){
+    } else if(mode == MANUAL){
       if(manualOn) turnOn();
       else turnOff();
     }
@@ -218,8 +218,6 @@ void loop(){
           }
           delay(5000);
           break;
-
-        case 
         
         case ONE: 
           lcd.clear();
