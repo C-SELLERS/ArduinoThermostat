@@ -1,9 +1,15 @@
+
+/*
+CSS 427 UWB
+CODE FOR ARDUINO THERMOSTAT
+DHT SENSOR
+*/
+
+
 #include <dht_nonblocking.h>
 #include <IRremote.h>
 #include <LiquidCrystal.h>
 
-//DHT sensor definition
-#define DHT_SENSOR_TYPE DHT_TYPE_11
 
 //Definition for remote functions
 #define POWER   0xFFA25D
@@ -32,16 +38,27 @@
 //Definition for volume button mapping
 #define CONTROLTEMP   0
 #define CONTROLHUMID  1
+#define CONTROLFAN    2
+
+// Definition for fan range
+#define MAXRES        255
+#define MINRES        150
 
 //Definition for operating modes
 #define MANUAL  true
 #define AUTO    false
+
+//These are the pin outs to the arduino from the H-Bridge IC 
+#define ENABLE 5
+#define DIRA 3
+#define DIRB 4
  
 //Initialize LCD Screen
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 //                RS  E  D4 D5  D6 D7
 
 //Initialize DHT Sensor variables
+#define DHT_SENSOR_TYPE DHT_TYPE_11
 static const int DHT_SENSOR_PIN = 2;
 DHT_nonblocking dht_sensor( DHT_SENSOR_PIN, DHT_SENSOR_TYPE );
 int ReadTime = 2000; 
@@ -57,32 +74,38 @@ int setTemp = 30;
 int setHumid = 45;
 int curTemp = 0;
 int curHum = 0;
+int resolution = (MAXRES + MINRES)/2;
 bool changes = true; //true for initial bootup
 bool manualOn = false; //Manual overide for on
 bool on = false; //Current signal to fan
 bool mode = MANUAL; //System's current mode
 int volButtonMapping = CONTROLTEMP; //Indicate which threshold VOL buttons will change
 
-//Relay Pin 13;
-int relay = 13; 
-
-
 //Initialize the remote control variables
 int receiverPin = 3;
 IRrecv irrecv(receiverPin);
-decode_results results;    
+decode_results results;      
 
+void setup() {
+  lcd.begin(16, 2);
+  Serial.begin(9600);
 
-void setup(){
-    lcd.begin(16, 2);
-    Serial.begin(9600);
-    pinMode(relay,OUTPUT);
-    irrecv.enableIRIn(); // Start the receiver
+  //H-Bridge pins
+  pinMode(ENABLE,OUTPUT);
+  pinMode(DIRA,OUTPUT);
+  pinMode(DIRB,OUTPUT);
+  
+  //Start the receiver
+  irrecv.enableIRIn(); 
 }
 
-
 void loop(){
-    //Read the temp and humidity every 2 seconds
+  
+  //This is to move the fan in one direction ***
+    digitalWrite(DIRA,HIGH); //one way
+    digitalWrite(DIRB,LOW);
+   
+  //Read the temp and humidity every 2 seconds
     Time = millis();
     if(Time - Checkpoint > ReadTime){
         Checkpoint = Time;
@@ -91,137 +114,73 @@ void loop(){
 
     //If there are changes check conditions and update screen
     if(changes){
-        if(curTemp > setTemp || curHum > setHumid || manualOn) {
-            if(!on){
-                digitalWrite(relay, HIGH); 
-                on = true;
-            }
-        } else {
-            if(on){
-                digitalWrite(relay, LOW);
-                on = false;
-            }
+         //Relay condition to fan
+        if(mode == AUTO) {
+          if(temperature > setTemp || humidity > setHumid) turnOn();
+          else turnOff();
+        } else if(mode == MANUAL){
+          if(manualOn) turnOn();
+          else turnOff();
         }
 
         updateScreen();
         changes = false;
-
     }
 
-  //Remote commands 
-    //TODO: ISR? Seperate method!
-    if (irrecv.decode(&results)){   
-        switch(results.value){
-
-            //Switch the mode that the device is in
-            case POWER:
-            changes = true;
-            if(mode == MANUAL) {
-                //Manual off goes to manual on
-                if(!manualOn) {
-                manualOn = true;
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("MANUAL ON");
-                }
-                //Manual on goes to auto
-                else {
-                mode = AUTO;
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("AUTO");
-                }
-            }
-            //Auto goes to manual off
-            else {
-                mode = MANUAL;
-                manualOn = false;
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("MANUAL OFF");
-            }
-            break;
-            
-            //Raise the threshold indicated by volButtonMapping
-            case VOLUP:
-                changes = true;
-                switch(volButtonMapping){
-                    case CONTROLTEMP:
-                        setTemp++;
-                        break;
-                    case CONTROLHUMID:
-                        setHumid++;
-                        break;
-                }
-                break;
-
-            //Lower the threshold indicated by volButtonMapping
-            case VOLDOWN:
-                changes = true;
-                switch(volButtonMapping){
-                    case CONTROLTEMP:
-                        setTemp--;
-                        break;
-                    case CONTROLHUMID:
-                        setHumid--;
-                        break;
-                }
-                break;
-            
-            case FUNC:
-                volButtonMapping=(volButtonMapping+1)%2;
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("VOL BUTTONS CONTROL ");
-                lcd.setCursor(0, 1);
-                switch(volButtonMapping){
-                    case CONTROLTEMP:
-                        lcd.print("DESIRED TEMP");
-                        lcd.clear();
-                        break;
-                    case CONTROLHUMID:
-                        lcd.print("DESIRED HUMID%");
-                        lcd.clear();
-                        break;
-                }
-                delay(5000);
-            break;
-            
-            case ONE: 
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("HELLLLOO");
-                delay(5000);
-                break;
-            
-            case TWO:
-                lcd.clear(); 
-                lcd.setCursor(0,0); 
-                lcd.print("Give Us"); 
-                delay(2000); 
-                lcd.clear(); 
-                lcd.setCursor(0,0); 
-                lcd.print("A Pass");
-                delay(1000);
-                break;       
-            
-            case HOLD: 
-                lcd.clear(); 
-                lcd.setCursor(0,0); 
-                lcd.print("REPEAT");
-                break;
-            
-            default: 
-                lcd.clear(); 
-                lcd.setCursor(0,0); 
-                lcd.print(results.value, HEX);
-                break;
-        }  
-    delay(500);
-    irrecv.resume(); // receive the next value
+  
+    //Remote commands 
+    if (irrecv.decode(&results)){
+      changes = true; 
+      ControlFunction(results);
+      delay(1000);
+      irrecv.resume(); // receive the next value
     }
-    
 
+  delay(100);
+}
+
+
+
+void printThresholdChange() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  switch(volButtonMapping) {
+    case CONTROLTEMP:
+      lcd.print("IN AUTO MODE, FAN ON AT ");
+      lcd.setCursor(0,1);
+      lcd.print(setTemp);
+      lcd.print("C");
+      break;
+    case CONTROLHUMID:
+      lcd.print("IN AUTO MODE, FAN ON AT ");
+      lcd.setCursor(0,1);
+      lcd.print(setHumid);
+      lcd.print("% HUMIDITY");
+      break;
+    case CONTROLFAN:
+      lcd.print("IN MANUAL MODE, FAN ON AT ");
+      lcd.setCursor(0,1);
+      lcd.print((resolution-MINRES) / (MAXRES-MINRES));
+      lcd.print("% POWER");
+      break;
+  }
+  delay(2000);
+}
+
+//YOU CAN CONTROL THE SPEED OF THE FAN BY MANIPULATING THE 2ND PARAMETER IN ANALOG WRITE
+//THIS POWER/VALUE HAS A RANGE FROM 0-255 (255 FULL POWER 0 OFF); 
+void turnOn(){
+  if(!on){
+      analogWrite(ENABLE,resolution);
+      on = true;
+    }
+}
+
+void turnOff(){
+  if(on){
+    analogWrite(ENABLE, 0); 
+    on = false;
+  }
 }
 
 //Void for changing screen if changes occur
@@ -266,7 +225,128 @@ void measureConditions(){
     while(!dht_sensor.measure(&temperature, &humidity)){}
 
     if( curTemp != (int)temperature || curHum != (int)humidity){
+        curTemp = (int)temperature;
+        curHum = (int)humidity;
         changes = true;
     }
     
+}
+
+void ControlFunction(decode_results results){
+  switch(results.value){
+
+        //Switch the mode that the device is in
+        case POWER:
+          if(mode == MANUAL) {
+            //Manual off goes to manual on
+            if(!manualOn) {
+              manualOn = true;
+              // In manual mode, volume buttons control fan strength
+              volButtonMapping = CONTROLFAN;
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("MANUAL ON");
+            }
+            //Manual on goes to auto
+            else {
+              mode = AUTO;
+              // In auto mode, volume buttons control temp threshold or humidity % threshold
+              volButtonMapping = CONTROLTEMP;
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("AUTO");
+            }
+          }
+          //Auto goes to manual off
+          else {
+            mode = MANUAL;
+            manualOn = false;
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("MANUAL OFF");
+          }
+          break;
+        
+        //Raise the threshold indicated by volButtonMapping
+        case VOLUP:
+          switch(volButtonMapping){
+            case CONTROLTEMP:
+              setTemp++;
+              break;
+            case CONTROLHUMID:
+              setHumid = min(100, setHumid+1);
+              break;
+            case CONTROLFAN:
+              resolution = min(MAXRES, resolution + 50);
+              break;
+          }
+          printThresholdChange();
+          break;
+
+        //Lower the threshold indicated by volButtonMapping
+        case VOLDOWN:
+          switch(volButtonMapping){
+            case CONTROLTEMP:
+              setTemp--;
+              break;
+            case CONTROLHUMID:
+              setHumid = max(0, setHumid-1);
+              break;
+            case CONTROLFAN:
+              resolution = max(MINRES, resolution - 50);
+              break;
+          }
+          printThresholdChange();
+          break;
+          
+        case FUNC:
+          // In auto mode, vol buttons can control temp threshold or humidity % threshold
+          if(mode == AUTO) {
+            volButtonMapping=(volButtonMapping+1)%2;
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("VOL BUTTONS CONTROL ");
+            lcd.setCursor(0, 1);
+            switch(volButtonMapping){
+              case CONTROLTEMP:
+                lcd.print("DESIRED TEMP (AUTO)");
+                break;
+              case CONTROLHUMID:
+                lcd.print("DESIRED HUMID% (AUTO)");
+                break;
+            }
+            delay(5000);
+          }
+          break;
+        
+        case ONE: 
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("HELLLLOO");
+          delay(5000);
+          break;
+        
+        case TWO:
+          lcd.clear(); 
+          lcd.setCursor(0,0); 
+          lcd.print("Give Us"); 
+          delay(2000); 
+          lcd.clear(); 
+          lcd.setCursor(0,0); 
+          lcd.print("A Pass");
+          delay(1000);
+          break;       
+        
+        case HOLD: 
+          lcd.clear(); 
+          lcd.setCursor(0,0); 
+          lcd.print("REPEAT");
+          break;
+        
+        default: 
+          lcd.clear(); 
+          lcd.setCursor(0,0); 
+          lcd.print(results.value, HEX);
+          break;
+  }
 }
