@@ -13,50 +13,51 @@ DHT SENSOR
 #define DHT_SENSOR_TYPE DHT_TYPE_11
 
 //Definition for remote functions
-#define POWER   0xFFA25D
-#define FUNC    0xFFE21D
-#define VOLUP   0xFF629D
-#define REWIND  0xFF22DD
-#define PAUSE   0xFF02FD
-#define FASTFOR 0xFFC23D
-#define DOWN    0xFFE01F
-#define VOLDOWN 0xFFA857
-#define UP      0xFF906F
-#define EQ      0xFF9867
-#define STREPT 0xFFB04F
-#define ZERO    0xFF6897
-#define ONE     0xFF30CF
-#define TWO     0xFF18E7
-#define THREE   0xFF7A85
-#define FOUR    0xFF10EF
-#define FIVE    0xFF38C7
-#define SIX     0xFF5AA5
-#define SEVEN   0xFF42BD
-#define EIGHT   0xFF4AB5
-#define NINE    0xFF52AD
-#define HOLD    0xFFFFFFFF
+#define POWER     0xFFA25D
+#define FUNC      0xFFE21D
+#define VOLUP     0xFF629D
+#define REWIND    0xFF22DD
+#define PAUSE     0xFF02FD
+#define FASTFOR   0xFFC23D
+#define DOWN      0xFFE01F
+#define VOLDOWN   0xFFA857
+#define UP        0xFF906F
+#define EQ        0xFF9867
+#define STREPT    0xFFB04F
+#define ZERO      0xFF6897
+#define ONE       0xFF30CF
+#define TWO       0xFF18E7
+#define THREE     0xFF7A85
+#define FOUR      0xFF10EF
+#define FIVE      0xFF38C7
+#define SIX       0xFF5AA5
+#define SEVEN     0xFF42BD
+#define EIGHT     0xFF4AB5
+#define NINE      0xFF52AD
+#define HOLD      0xFFFFFFFF
 
 //Definition for volume button mapping
+#define CONTROLOFF    -1
 #define CONTROLTEMP   0
 #define CONTROLHUMID  1
 #define CONTROLFAN    2
 
-// Definition for fan range
-#define MAXRES        255
-#define MINRES        150
+// Defintion of fan speed range
+#define MAXRES   255
+#define MINRES   155
 
 //Definition for operating modes
 #define MANUAL  true
 #define AUTO    false
 
 //These are the pin outs to the arduino from the H-Bridge IC 
-#define ENABLE 5
-#define DIRA 3
-#define DIRB 4
+#define ENABLE  5
+#define DIRA    3
+#define DIRB    4
  
 //Initialize LCD Screen
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
-//                RS  E  D4 D5  D6 D7
+//                RS E  D4 D5  D6  D7
 
 //Initialize DHT Sensor variables
 static const int DHT_SENSOR_PIN = 2;
@@ -69,7 +70,7 @@ float humidity;
 //Variables for settings
 int setTemp = 30;
 int setHumid = 45;
-int resolution = (MAXRES + MINRES)/2;
+int resolution = (MAXRES + MINRES) / 2;
 bool manualOn = false; //Manual overide for on
 bool on = false; //Current signal to fan
 bool mode = MANUAL; //System's current mode
@@ -156,14 +157,28 @@ void loop(){
   
   //Relay condition to fan
     if(mode == AUTO) {
-      if(temperature > setTemp || humidity > setHumid) turnOn();
+      if(temperature > setTemp + 6 || humidity > setHumid + 12)
+      {
+        resoltuion = MAXRES;
+        turnOn();
+      }
+      else if(temperature > setTemp + 3 || humidity > setHumid + 6)
+      {
+        resoltuion = (MAXRES + MINRES) / 2;
+        turnOn();
+      }
+      else if(temperature > setTemp || humidity > setHumid)
+      {
+        resoltuion = MINRES;
+        turnOn();
+      }
       else turnOff();
     } else if(mode == MANUAL){
       if(manualOn) turnOn();
       else turnOff();
     }
   
-  //Remote commands 
+    //Remote commands 
     //TODO: ISR? Seperate method!
     if (irrecv.decode(&results)){   
       switch(results.value){
@@ -174,29 +189,36 @@ void loop(){
             //Manual off goes to manual on
             if(!manualOn) {
               manualOn = true;
-              // In manual mode, volume buttons control fan strength
               volButtonMapping = CONTROLFAN;
+              resolution = (MINRES + MAXRES) / 2;
               lcd.clear();
               lcd.setCursor(0, 0);
               lcd.print("MANUAL ON");
+              lcd.setCursor(0, 1);
+              lcd.print("CONTROLING FAN");
             }
             //Manual on goes to auto
             else {
               mode = AUTO;
-              // In auto mode, volume buttons control temp threshold or humidity % threshold
               volButtonMapping = CONTROLTEMP;
+              resolution = MINRES;
               lcd.clear();
               lcd.setCursor(0, 0);
               lcd.print("AUTO");
+              lcd.setCursor(0, 0);
+              lcd.print("CONTROLING TEMP");
             }
           }
           //Auto goes to manual off
           else {
             mode = MANUAL;
             manualOn = false;
+            volButtonMapping = CONTROLOFF;
             lcd.clear();
             lcd.setCursor(0, 0);
             lcd.print("MANUAL OFF");
+            lcd.setCursor(0, 1);
+            lcd.print("CONTROLING OFF");
           }
           break;
         
@@ -207,7 +229,7 @@ void loop(){
               setTemp++;
               break;
             case CONTROLHUMID:
-              setHumid = min(100, setHumid+1);
+              setHumid++;
               break;
             case CONTROLFAN:
               resolution = min(MAXRES, resolution + 50);
@@ -223,7 +245,7 @@ void loop(){
               setTemp--;
               break;
             case CONTROLHUMID:
-              setHumid = max(0, setHumid-1);
+              setHumid--;
               break;
             case CONTROLFAN:
               resolution = max(MINRES, resolution - 50);
@@ -233,8 +255,7 @@ void loop(){
           break;
           
         case FUNC:
-          // In auto mode, vol buttons can control temp threshold or humidity % threshold
-          if(mode == AUTO) {
+          if(mode == Auto) {
             volButtonMapping=(volButtonMapping+1)%2;
             lcd.clear();
             lcd.setCursor(0, 0);
@@ -247,8 +268,8 @@ void loop(){
               case CONTROLHUMID:
                 lcd.print("DESIRED HUMID% (AUTO)");
                 break;
+             delay(5000);
             }
-            delay(5000);
           }
           break;
         
@@ -307,25 +328,27 @@ static bool measure_environment( float *temperature, float *humidity ) {
 
 void printThresholdChange() {
   lcd.clear();
-  lcd.setCursor(0, 0);
   switch(volButtonMapping) {
     case CONTROLTEMP:
+      lcd.setCursor(0, 0);
       lcd.print("IN AUTO MODE, FAN ON AT ");
       lcd.setCursor(0,1);
       lcd.print(setTemp);
       lcd.print("C");
       break;
     case CONTROLHUMID:
+      lcd.setCursor(0, 0);
       lcd.print("IN AUTO MODE, FAN ON AT ");
       lcd.setCursor(0,1);
       lcd.print(setHumid);
       lcd.print("% HUMIDITY");
       break;
     case CONTROLFAN:
-      lcd.print("IN MANUAL MODE, FAN ON AT ");
+      lcd.setCursor(0, 0);
+      lcd.print("IN MANUL MODE, FAN AT");
       lcd.setCursor(0,1);
-      lcd.print((resolution-MINRES) / (MAXRES-MINRES));
-      lcd.print("% POWER");
+      lcd.print((resolution - MINRES)/(MAXRES - MINRES));
+      lcd.print("% MAX SPEED");
       break;
   }
   delay(2000);
@@ -335,15 +358,13 @@ void printThresholdChange() {
 void turnOn(){
   if(!on){
       analogWrite(ENABLE,resolution);
-      //digitalWrite(relay, HIGH);
       on = true;
     }
 }
 
 void turnOff(){
   if(on){
-    analogWrite(ENABLE, 0); 
-    //digitalWrite(relay, LOW);
+    analogWrite(ENABLE, 0);
     on = false;
   }
 }
