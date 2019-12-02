@@ -231,10 +231,14 @@ void loop(){
           }
           printThresholdChange();
           break;
-          
+
+        // Change what volume buttons map to in auto mode
         case FUNC:
-          // In auto mode, vol buttons can control temp threshold or humidity % threshold
           if(mode == AUTO) {
+            if(volButtonMapping = CONTROLTEMP)
+              volButtonMapping = CONTROLHUMID;
+            else
+              volButtonMapping = CONTROLTEMP;
             volButtonMapping=(volButtonMapping+1)%2;
             lcd.clear();
             lcd.setCursor(0, 0);
@@ -250,30 +254,6 @@ void loop(){
             }
             delay(5000);
           }
-          break;
-        
-        case ONE: 
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("HELLLLOO");
-          delay(5000);
-          break;
-        
-        case TWO:
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print("Give Us"); 
-          delay(2000); 
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print("A Pass");
-          delay(1000);
-          break;       
-        
-        case HOLD: 
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print("REPEAT");
           break;
         
         default: 
