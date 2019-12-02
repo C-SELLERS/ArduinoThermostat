@@ -68,12 +68,6 @@ int volButtonMapping = CONTROLTEMP; //Indicate which threshold VOL buttons will 
 //Relay Pin 13;
 int relay = 13; 
 
-/*
-//ONLY FOR SIMULATION TMP VARIABLES
-int sensorPin=0;
-int reading;
-float voltage;
-*/
 
 //Initialize the remote control variables
 int receiverPin = 3;
@@ -102,12 +96,6 @@ void loop(){
       Serial.println("no reading");
     }
      
-  /*
-  //ONLY FOR SIMULATION
-  reading = analogRead(sensorPin);  
-  voltage = (reading * 5.0) / 1024.0;
-  temperature = (voltage - 0.5) * 100 ;  
-  */
   
   	//Print to LCD 
     lcd.setCursor(0, 0);
@@ -124,9 +112,9 @@ void loop(){
     }
     
     lcd.setCursor(0,1);
-  	lcd.print("FAN ON AT ");
+  	lcd.print("SET ");
     lcd.print(setTemp);
-    lcd.print(" C");
+    lcd.print("C");
   
     lcd.setCursor(9,1);
     lcd.print(setHumid);
