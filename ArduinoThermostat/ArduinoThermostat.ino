@@ -51,7 +51,7 @@ DHT SENSOR
 
 //These are the pin outs to the arduino from the H-Bridge IC 
 #define ENABLE 5
-#define DIRA   3
+#define DIRA   6
 #define DIRB   4
  
 //Initialize LCD Screen
