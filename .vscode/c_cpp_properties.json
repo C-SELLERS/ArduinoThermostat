@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "D:\\Documents\\Arduino\\libraries\\IRremote",
+                "C:\\Program Files (x86)\\Arduino\\**"
+            ],
+            "forcedInclude": [
+                "C:\\Users\\Colton\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.6.23\\cores\\arduino\\Arduino.h",
+                "C:\\Program Files (x86)\\Arduino\\libraries\\LiquidCrystal\\src\\LiquidCrystal.h",
+                "C:\\Program Files (x86)\\Arduino\\libraries\\DHT_nonblocking-master\\dht_nonblocking.h",
+                "C:\\Program Files (x86)\\Arduino\\libraries\\IRremote\\IRremote.h"
+            ],
+            "intelliSenseMode": "msvc-x64",
+            "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.21.27702/bin/Hostx64/x64/cl.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
+
+
