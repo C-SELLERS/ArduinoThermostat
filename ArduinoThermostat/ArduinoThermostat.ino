@@ -119,17 +119,17 @@ void loop(){
         if(mode == AUTO) {
         if(temperature > setTemp + 6 || humidity > setHumid + 12)
         {
-          resoltuion = MAXRES;
+          resolution = MAXRES;
           turnOn();
         }
         else if(temperature > setTemp + 3 || humidity > setHumid + 6)
         {
-          resoltuion = (MAXRES + MINRES) / 2;
+          resolution = (MAXRES + MINRES) / 2;
           turnOn();
         }
         else if(temperature > setTemp || humidity > setHumid)
         {
-          resoltuion = MINRES;
+          resolution = MINRES;
           turnOn();
         }
         else turnOff();
@@ -147,7 +147,6 @@ void loop(){
     if (irrecv.decode(&results)){
       changes = true; 
       ControlFunction(results);
-      delay(1000);
       irrecv.resume(); // receive the next value
     }
 
@@ -277,6 +276,7 @@ void ControlFunction(decode_results results){
               lcd.setCursor(0, 1);
               lcd.print("CONTROLING TEMP");
             }
+            delay(1000); //Leave message for a second
           }
           //Auto goes to manual off
           else {
@@ -288,6 +288,7 @@ void ControlFunction(decode_results results){
             lcd.print("MANUAL OFF");
             lcd.setCursor(0, 1);
             lcd.print("CONTROLING OFF");
+            delay(1000); //leave message for a second
           }
           break;
         
@@ -304,7 +305,7 @@ void ControlFunction(decode_results results){
               resolution = min(MAXRES, resolution + 50);
               break;
           }
-          printThresholdChange();
+          //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
           break;
 
         //Lower the threshold indicated by volButtonMapping
@@ -320,7 +321,7 @@ void ControlFunction(decode_results results){
               resolution = max(MINRES, resolution - 50);
               break;
           }
-          printThresholdChange();
+          //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
           break;
           
         case FUNC:
@@ -339,7 +340,7 @@ void ControlFunction(decode_results results){
                 lcd.print("DESIRED HUMID% (AUTO)");
                 break;
             }
-            delay(5000);
+            delay(2000);
           }
           break;
         
