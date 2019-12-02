@@ -39,6 +39,11 @@ DHT SENSOR
 //Definition for volume button mapping
 #define CONTROLTEMP   0
 #define CONTROLHUMID  1
+#define CONTROLFAN    2
+
+// Definition for fan range
+#define MAXRES        255
+#define MINRES        150
 
 //Definition for operating modes
 #define MANUAL  true
@@ -64,6 +69,7 @@ float humidity;
 //Variables for settings
 int setTemp = 30;
 int setHumid = 45;
+int resolution = (MAXRES + MINRES)/2;
 bool manualOn = false; //Manual overide for on
 bool on = false; //Current signal to fan
 bool mode = MANUAL; //System's current mode
@@ -168,6 +174,8 @@ void loop(){
             //Manual off goes to manual on
             if(!manualOn) {
               manualOn = true;
+              // In manual mode, volume buttons control fan strength
+              volButtonMapping = CONTROLFAN;
               lcd.clear();
               lcd.setCursor(0, 0);
               lcd.print("MANUAL ON");
@@ -175,6 +183,8 @@ void loop(){
             //Manual on goes to auto
             else {
               mode = AUTO;
+              // In auto mode, volume buttons control temp threshold or humidity % threshold
+              volButtonMapping = CONTROLTEMP;
               lcd.clear();
               lcd.setCursor(0, 0);
               lcd.print("AUTO");
@@ -197,7 +207,10 @@ void loop(){
               setTemp++;
               break;
             case CONTROLHUMID:
-              setHumid++;
+              setHumid = min(100, setHumid+1);
+              break;
+            case CONTROLFAN:
+              resolution = min(MAXRES, resolution + 50);
               break;
           }
           printThresholdChange();
@@ -210,27 +223,33 @@ void loop(){
               setTemp--;
               break;
             case CONTROLHUMID:
-              setHumid--;
+              setHumid = max(0, setHumid-1);
+              break;
+            case CONTROLFAN:
+              resolution = max(MINRES, resolution - 50);
               break;
           }
           printThresholdChange();
           break;
           
         case FUNC:
-          volButtonMapping=(volButtonMapping+1)%2;
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("VOL BUTTONS CONTROL ");
-          lcd.setCursor(0, 1);
-          switch(volButtonMapping){
-            case CONTROLTEMP:
-              lcd.print("DESIRED TEMP (AUTO)");
-              break;
-            case CONTROLHUMID:
-              lcd.print("DESIRED HUMID% (AUTO)");
-              break;
+          // In auto mode, vol buttons can control temp threshold or humidity % threshold
+          if(mode == AUTO) {
+            volButtonMapping=(volButtonMapping+1)%2;
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("VOL BUTTONS CONTROL ");
+            lcd.setCursor(0, 1);
+            switch(volButtonMapping){
+              case CONTROLTEMP:
+                lcd.print("DESIRED TEMP (AUTO)");
+                break;
+              case CONTROLHUMID:
+                lcd.print("DESIRED HUMID% (AUTO)");
+                break;
+            }
+            delay(5000);
           }
-          delay(5000);
           break;
         
         case ONE: 
@@ -289,16 +308,24 @@ static bool measure_environment( float *temperature, float *humidity ) {
 void printThresholdChange() {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("IN AUTO MODE, FAN ON AT ");
-  lcd.setCursor(0,1);
   switch(volButtonMapping) {
     case CONTROLTEMP:
+      lcd.print("IN AUTO MODE, FAN ON AT ");
+      lcd.setCursor(0,1);
       lcd.print(setTemp);
       lcd.print("C");
       break;
     case CONTROLHUMID:
+      lcd.print("IN AUTO MODE, FAN ON AT ");
+      lcd.setCursor(0,1);
       lcd.print(setHumid);
       lcd.print("% HUMIDITY");
+      break;
+    case CONTROLFAN:
+      lcd.print("IN MANUAL MODE, FAN ON AT ");
+      lcd.setCursor(0,1);
+      lcd.print((resolution-MINRES) / (MAXRES-MINRES));
+      lcd.print("% POWER");
       break;
   }
   delay(2000);
@@ -307,7 +334,7 @@ void printThresholdChange() {
 //THIS POWER/VALUE HAS A RANGE FROM 0-255 (255 FULL POWER 0 OFF); 
 void turnOn(){
   if(!on){
-      analogWrite(ENABLE,255);
+      analogWrite(ENABLE,resolution);
       //digitalWrite(relay, HIGH);
       on = true;
     }
