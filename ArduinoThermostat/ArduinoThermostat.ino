@@ -42,9 +42,9 @@ DHT SENSOR
 
 // Definition for fan range
 #define MAXRES        150
-#define MINRES        85
+#define MINRES        90
 #define OFF           0
-#define RESSTEP       32
+#define RESSTEP       30
 
 //Definition for operating modes
 #define MANUAL        true
@@ -78,8 +78,7 @@ int curTemp = 0;
 int curHum = 0;
 int resolution = (MAXRES + MINRES) / 2;
 bool changes = true; //true for initial bootup
-bool on = false; //Current signal to fan
-bool mode = MANUAL; //System's current mode
+bool mode = AUTO; //System's current mode
 int volButtonMapping = CONTROLTEMP; //Indicate which threshold VOL buttons will change
 
 //Initialize the remote control variables
@@ -95,17 +94,17 @@ void setup() {
   pinMode(ENABLE,OUTPUT);
   pinMode(DIRA,OUTPUT);
   pinMode(DIRB,OUTPUT);
+
+  //H-Bridge Direction
+  digitalWrite(DIRA,HIGH); //one way
+  digitalWrite(DIRB,LOW);
   
   //Start the receiver
   irrecv.enableIRIn(); 
 }
 
 void loop(){
-  
-  //This is to move the fan in one direction ***
-    digitalWrite(DIRA,HIGH); //one way
-    digitalWrite(DIRB,LOW);
-   
+    
   //Read the temp and humidity every 2 seconds
     Time = millis();
     if(Time - Checkpoint > ReadTime){
@@ -117,25 +116,20 @@ void loop(){
     if(changes){
         //Relay condition to fan
         if(mode == AUTO) {
-        if(temperature > setTemp + 6 || humidity > setHumid + 12)
-        {
-          resolution = MAXRES;
-        }
-        else if(temperature > setTemp + 3 || humidity > setHumid + 6)
-        {
-          resolution = (MAXRES + MINRES) / 2;
-        }
-        else if(temperature > setTemp || humidity > setHumid)
-        {
-          resolution = MINRES;
-        }
-        else 
-        {
+          if(temperature > setTemp + 6 || humidity > setHumid + 12) {
+            resolution = MAXRES;
+          }
+          else if(temperature > setTemp + 3 || humidity > setHumid + 6){
+            resolution = (MAXRES + MINRES) / 2;
+          }
+          else if(temperature > setTemp || humidity > setHumid){
+            resolution = MINRES;
+          } else {
           resolution = OFF;
-        }
-        turn();
+          }
+          WriteResolution();
       } else if(mode == MANUAL){
-        turn();
+        WriteResolution();
       }
 
         updateScreen();
@@ -181,12 +175,9 @@ void printThresholdChange() {
   delay(2000);
 }
 
-//YOU CAN CONTROL THE SPEED OF THE FAN BY MANIPULATING THE 2ND PARAMETER IN ANALOG WRITE
-//THIS POWER/VALUE HAS A RANGE FROM 0-255 (255 FULL POWER 0 OFF); 
-void turn()
-{
+//writes the latest resolution to H bridge
+void WriteResolution(){
    analogWrite(ENABLE, resolution);
-   on = true;
 }
 
 //Void for changing screen if changes occur
@@ -205,10 +196,10 @@ void updateScreen(){
     lcd.print("%");
 
     lcd.setCursor(14,0);
-    if(on) { 
-        lcd.print("+");
+    if(mode == MANUAL){
+      lcd.print("M");
     } else {
-        lcd.print("-");
+      lcd.print("A");
     }
 
     lcd.setCursor(0,1);
@@ -221,6 +212,18 @@ void updateScreen(){
     lcd.setCursor(9,1);
     lcd.print(setHumid);
     lcd.print("%");
+
+    //PRINT CURRENT FAN SPEED
+    lcd.setCursor(14,1);
+      if(resolution == 0){
+      lcd.print("0");
+    } else if (resolution == MINRES) {
+      lcd.print("L");
+    } else if (resolution == MAXRES) {
+      lcd.print("H");
+    } else {
+      lcd.print("M");
+    }
 }
 
 void measureConditions(){
@@ -267,8 +270,7 @@ void ControlFunction(decode_results results){
               lcd.print("CONTROLING: TEMP");
             }
             delay(1000); //Leave message for a second
-          }
-          break;
+            break;
         
         //Raise the threshold indicated by volButtonMapping
         case VOLUP:
@@ -281,7 +283,7 @@ void ControlFunction(decode_results results){
               break;
             case CONTROLFAN:
               resolution = min(MAXRES, resolution + RESSTEP);
-              turn();
+              WriteResolution();
               break;
           }
           //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
@@ -298,7 +300,7 @@ void ControlFunction(decode_results results){
               break;
             case CONTROLFAN:
               resolution = max(MINRES, resolution - RESSTEP);
-              turn();
+              WriteResolution();
               break;
           }
           //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
