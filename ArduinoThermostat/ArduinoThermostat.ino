@@ -148,33 +148,6 @@ void loop(){
 }
 
 
-
-void printThresholdChange() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  switch(volButtonMapping) {
-    case CONTROLTEMP:
-      lcd.print("IN AUTO MODE, FAN ON AT ");
-      lcd.setCursor(0,1);
-      lcd.print(setTemp);
-      lcd.print("C");
-      break;
-    case CONTROLHUMID:
-      lcd.print("IN AUTO MODE, FAN ON AT ");
-      lcd.setCursor(0,1);
-      lcd.print(setHumid);
-      lcd.print("% HUMIDITY");
-      break;
-    case CONTROLFAN:
-      lcd.print("IN MANUAL MODE, FAN ON AT ");
-      lcd.setCursor(0,1);
-      lcd.print((resolution-MINRES) / (MAXRES-MINRES));
-      lcd.print("% POWER");
-      break;
-  }
-  delay(2000);
-}
-
 //writes the latest resolution to H bridge
 void WriteResolution(){
    analogWrite(ENABLE, resolution);
@@ -224,6 +197,20 @@ void updateScreen(){
     } else {
       lcd.print("M");
     }
+
+  switch(volButtonMapping){
+      case CONTROLTEMP:
+        lcd.setCursor(3, 1);
+        break;
+      case CONTROLHUMID:
+        lcd.setCursor(8, 1);
+        break;
+      case CONTROLFAN:
+        lcd.setCursor(13, 1);
+        break;
+    }
+    lcd.print("*");
+
 }
 
 void measureConditions(){
@@ -303,8 +290,26 @@ void ControlFunction(decode_results results){
               WriteResolution();
               break;
           }
-          //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
           break;
+
+          case PAUSE:
+           switch(volButtonMapping){
+            case CONTROLTEMP:
+              setTemp = 30;
+              break;
+            case CONTROLHUMID:
+              setHumid = 45;
+              break;
+            case CONTROLFAN:
+              if(resolution == OFF){
+                resolution = (MINRES+MAXRES)/2;
+              } else {
+                resolution = OFF;
+              }
+              WriteResolution();
+              break;
+            }
+            break;
           
         case FUNC:
           // In auto mode, vol buttons can control temp threshold or humidity % threshold
@@ -325,7 +330,7 @@ void ControlFunction(decode_results results){
             delay(2000);
           }
           break;
-        
+
         case ONE: 
           lcd.clear();
           lcd.setCursor(0, 0);
