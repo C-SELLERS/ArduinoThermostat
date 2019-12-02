@@ -42,8 +42,9 @@ DHT SENSOR
 #define CONTROLFAN    2
 
 // Definition for fan range
-#define MAXRES        255
-#define MINRES        155
+#define MAXRES        150
+#define MINRES        85
+#define RESSTEP       32
 
 //Definition for operating modes
 #define MANUAL  true
@@ -302,7 +303,8 @@ void ControlFunction(decode_results results){
               setHumid = min(100, setHumid+1);
               break;
             case CONTROLFAN:
-              resolution = min(MAXRES, resolution + 50);
+              resolution = min(MAXRES, resolution + RESSTEP);
+              analogWrite(ENABLE,resolution);
               break;
           }
           //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
@@ -315,10 +317,11 @@ void ControlFunction(decode_results results){
               setTemp--;
               break;
             case CONTROLHUMID:
-              setHumid = max(0, setHumid-1);
+              setHumid--;
               break;
             case CONTROLFAN:
-              resolution = max(MINRES, resolution - 50);
+              resolution = max(MINRES, resolution - RESSTEP);
+              analogWrite(ENABLE,resolution);
               break;
           }
           //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
@@ -362,16 +365,11 @@ void ControlFunction(decode_results results){
           delay(1000);
           break;       
         
+        //Maybe implement later?
         case HOLD: 
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print("REPEAT");
           break;
         
         default: 
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print(results.value, HEX);
           break;
   }
 }
