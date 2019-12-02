@@ -22,7 +22,7 @@ DHT SENSOR
 #define VOLDOWN 0xFFA857
 #define UP      0xFF906F
 #define EQ      0xFF9867
-#define STREPT 0xFFB04F
+#define STREPT  0xFFB04F
 #define ZERO    0xFF6897
 #define ONE     0xFF30CF
 #define TWO     0xFF18E7
@@ -36,13 +36,14 @@ DHT SENSOR
 #define HOLD    0xFFFFFFFF
 
 //Definition for volume button mapping
+#define CONTROLOFF   -1
 #define CONTROLTEMP   0
 #define CONTROLHUMID  1
 #define CONTROLFAN    2
 
 // Definition for fan range
 #define MAXRES        255
-#define MINRES        150
+#define MINRES        155
 
 //Definition for operating modes
 #define MANUAL  true
@@ -50,12 +51,12 @@ DHT SENSOR
 
 //These are the pin outs to the arduino from the H-Bridge IC 
 #define ENABLE 5
-#define DIRA 3
-#define DIRB 4
+#define DIRA   3
+#define DIRB   4
  
 //Initialize LCD Screen
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
-//                RS  E  D4 D5  D6 D7
+//                RS E  D4 D5  D6  D7
 
 //Initialize DHT Sensor variables
 #define DHT_SENSOR_TYPE DHT_TYPE_11
@@ -74,7 +75,7 @@ int setTemp = 30;
 int setHumid = 45;
 int curTemp = 0;
 int curHum = 0;
-int resolution = (MAXRES + MINRES)/2;
+int resolution = (MAXRES + MINRES) / 2;
 bool changes = true; //true for initial bootup
 bool manualOn = false; //Manual overide for on
 bool on = false; //Current signal to fan
@@ -114,14 +115,28 @@ void loop(){
 
     //If there are changes check conditions and update screen
     if(changes){
-         //Relay condition to fan
+        //Relay condition to fan
         if(mode == AUTO) {
-          if(temperature > setTemp || humidity > setHumid) turnOn();
-          else turnOff();
-        } else if(mode == MANUAL){
-          if(manualOn) turnOn();
-          else turnOff();
+        if(temperature > setTemp + 6 || humidity > setHumid + 12)
+        {
+          resoltuion = MAXRES;
+          turnOn();
         }
+        else if(temperature > setTemp + 3 || humidity > setHumid + 6)
+        {
+          resoltuion = (MAXRES + MINRES) / 2;
+          turnOn();
+        }
+        else if(temperature > setTemp || humidity > setHumid)
+        {
+          resoltuion = MINRES;
+          turnOn();
+        }
+        else turnOff();
+      } else if(mode == MANUAL){
+        if(manualOn) turnOn();
+        else turnOff();
+      }
 
         updateScreen();
         changes = false;
@@ -243,27 +258,36 @@ void ControlFunction(decode_results results){
               manualOn = true;
               // In manual mode, volume buttons control fan strength
               volButtonMapping = CONTROLFAN;
+              resolution = (MINRES + MAXRES) / 2;
               lcd.clear();
               lcd.setCursor(0, 0);
               lcd.print("MANUAL ON");
+              lcd.setCursor(0, 1);
+              lcd.print("CONTROLING FAN");
             }
             //Manual on goes to auto
             else {
               mode = AUTO;
               // In auto mode, volume buttons control temp threshold or humidity % threshold
               volButtonMapping = CONTROLTEMP;
+              resolution = MINRES;
               lcd.clear();
               lcd.setCursor(0, 0);
               lcd.print("AUTO");
+              lcd.setCursor(0, 1);
+              lcd.print("CONTROLING TEMP");
             }
           }
           //Auto goes to manual off
           else {
             mode = MANUAL;
             manualOn = false;
+            volButtonMapping = CONTROLOFF;
             lcd.clear();
             lcd.setCursor(0, 0);
             lcd.print("MANUAL OFF");
+            lcd.setCursor(0, 1);
+            lcd.print("CONTROLING OFF");
           }
           break;
         
