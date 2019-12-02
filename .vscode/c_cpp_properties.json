@@ -3,6 +3,7 @@
         {
             "name": "Win32",
             "includePath": [
+                "D:\\Documents\\Arduino\\libraries\\DHT_sensor_library",
                 "D:\\Documents\\Arduino\\libraries\\IRremote",
                 "C:\\Program Files (x86)\\Arduino\\**"
             ],
@@ -20,5 +21,3 @@
     ],
     "version": 4
 }
-
-
