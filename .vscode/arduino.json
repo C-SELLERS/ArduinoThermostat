@@ -1,5 +1,5 @@
 {
     "board": "arduino:avr:uno",
     "port": "COM3",
-    "sketch": "Arduino Thermostat\\ArduinoThermostat.ino"
+    "sketch": "ArduinoThermostat\\ArduinoThermostat.ino"
 }
