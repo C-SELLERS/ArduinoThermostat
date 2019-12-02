@@ -119,9 +119,9 @@ void loop(){
       Serial.print( " deg. C, Humidity = " );
       Serial.print( humidity, 1 );
       Serial.println( "%" );
-    } else {
-      Serial.println("no reading");
-    }
+  } else {
+     Serial.println("no reading");
+  }
      
   /*
   //ONLY FOR SIMULATION
@@ -156,7 +156,7 @@ void loop(){
     
   
   //Relay condition to fan
-    if(mode == AUTO) {
+  if(mode == AUTO) {
       if(temperature > setTemp + 6 || humidity > setHumid + 12)
       {
         resoltuion = MAXRES;
@@ -173,14 +173,14 @@ void loop(){
         turnOn();
       }
       else turnOff();
-    } else if(mode == MANUAL){
+  } else if(mode == MANUAL){
       if(manualOn) turnOn();
       else turnOff();
-    }
+  }
   
-    //Remote commands 
-    //TODO: ISR? Seperate method!
-    if (irrecv.decode(&results)){   
+  //Remote commands 
+  //TODO: ISR? Seperate method!
+  if (irrecv.decode(&results)){   
       switch(results.value){
 
         //Switch the mode that the device is in
