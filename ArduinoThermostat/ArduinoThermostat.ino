@@ -1,4 +1,3 @@
-
 /*
 CSS 427 UWB
 CODE FOR ARDUINO THERMOSTAT
@@ -44,7 +43,13 @@ DHT SENSOR
 #define MAXRES        150
 #define MINRES        90
 #define OFF           0
-#define RESSTEP       30
+#define RESSTEP       15
+
+// Defining Default TEMP, HUMIDITY, RES
+#define DEFAULTTEMP   30
+#define DEFAULTHUMID  45
+#define DEFUALTRES    120
+#define DEFAULTINC    5
 
 //Definition for operating modes
 #define MANUAL        true
@@ -72,11 +77,12 @@ float temperature;
 float humidity;
 
 //Variables for settings
-int setTemp = 30;
-int setHumid = 45;
+int setTemp = DEFAULTTEMP;
+int setHumid = DEFAULTHUMID;
 int curTemp = 0;
 int curHum = 0;
-int resolution = (MAXRES + MINRES) / 2;
+int resolution = 0;
+int increment = DEFAULTINC;
 bool changes = true; //true for initial bootup
 bool mode = AUTO; //System's current mode
 int volButtonMapping = CONTROLTEMP; //Indicate which threshold VOL buttons will change
@@ -104,36 +110,40 @@ void setup() {
 }
 
 void loop(){
-    
-  //Read the temp and humidity every 2 seconds
+    //Read the temp and humidity every 2 seconds
     Time = millis();
     if(Time - Checkpoint > ReadTime){
-        Checkpoint = Time;
-        measureConditions();
+      Checkpoint = Time;
+      measureConditions();
     }
 
     //If there are changes check conditions and update screen
     if(changes){
-        //Relay condition to fan
-        if(mode == AUTO) {
-          if(temperature > setTemp + 6 || humidity > setHumid + 12) {
-            resolution = MAXRES;
-          }
-          else if(temperature > setTemp + 3 || humidity > setHumid + 6){
-            resolution = (MAXRES + MINRES) / 2;
-          }
-          else if(temperature > setTemp || humidity > setHumid){
-            resolution = MINRES;
-          } else {
+      //Relay condition to fan
+      if(mode == AUTO) {
+        if(temperature > setTemp + 4 || humidity > setHumid + 12) {
+          resolution = MAXRES;
+        }
+        else if(temperature > setTemp + 3 || humidity > setHumid + 9){
+          resolution = ((MAXRES + MINRES) * 3) / 4;
+        }
+        else if(temperature > setTemp + 2 || humidity > setHumid + 6){
+          resolution = (MAXRES + MINRES) / 2;
+        }
+        else if(temperature > setTemp + 1 || humidity > setHumid + 3){
+          resolution = (MAXRES + MINRES) / 4;
+        }
+        else if(temperature > setTemp || humidity > setHumid){
+          resolution = MINRES;
+        } else {
           resolution = OFF;
-          }
-          WriteResolution();
-      } else if(mode == MANUAL){
-        WriteResolution();
-      }
-
-        updateScreen();
-        changes = false;
+        }
+      } 
+      // regardless do this:
+      analogWrite(ENABLE, resolution);
+      
+      updateScreen();
+      changes = false;
     }
 
   
@@ -144,13 +154,7 @@ void loop(){
       irrecv.resume(); // receive the next value
     }
 
-  delay(100);
-}
-
-
-//writes the latest resolution to H bridge
-void WriteResolution(){
-   analogWrite(ENABLE, resolution);
+    delay(100);
 }
 
 //Void for changing screen if changes occur
@@ -176,7 +180,7 @@ void updateScreen(){
     }
 
     lcd.setCursor(0,1);
-  	 lcd.print("SET");
+    lcd.print("SET");
 
     lcd.setCursor(4, 1);
     lcd.print(setTemp);
@@ -188,15 +192,19 @@ void updateScreen(){
 
     //PRINT CURRENT FAN SPEED
     lcd.setCursor(14,1);
-      if(resolution == 0){
+      if(resolution == OFF){
       lcd.print("0");
     } else if (resolution == MINRES) {
       lcd.print("L");
     } else if (resolution == MAXRES) {
       lcd.print("H");
+    } else if (resolution < DEFAULTRES){
+      lcd.print("ML");
+    } else if (resolution > DEFAULTRES){
+      lcd.print("MH");
     } else {
       lcd.print("M");
-    }
+    } 
 
   switch(volButtonMapping){
       case CONTROLTEMP:
@@ -230,130 +238,266 @@ void measureConditions(){
 
 void ControlFunction(decode_results results){
   switch(results.value){
-
-        //Switch the mode that the device is in
-        case POWER:
-          if(mode == AUTO) {
-              mode = MANUAL;
-              // In manual mode, volume buttons control fan strength
-              volButtonMapping = CONTROLFAN;
-              resolution = (MINRES + MAXRES) / 2;
-              lcd.clear();
-              lcd.setCursor(0, 0);
-              lcd.print("MODE: MANUAL");
-              lcd.setCursor(0, 1);
-              lcd.print("CONTROLING: FAN");
-           }
-           //Manual goes to auto
-           else {
-              mode = AUTO;
-              // In auto mode, volume buttons control temp threshold or humidity % threshold
-              volButtonMapping = CONTROLTEMP;
-              resolution = MINRES;
-              lcd.clear();
-              lcd.setCursor(0, 0);
-              lcd.print("MODE: AUTO");
-              lcd.setCursor(0, 1);
-              lcd.print("CONTROLING: TEMP");
-            }
-            delay(1000); //Leave message for a second
+      //Switch the mode that the device is in
+      case FUNC:
+        if(mode == AUTO) {
+            mode = MANUAL;
+            // In manual mode, volume buttons control fan strength
+            volButtonMapping = CONTROLFAN;
+            resolution = (MINRES + MAXRES) / 2;
+         }
+         //Manual goes to auto
+         else {
+            mode = AUTO;
+            // In auto mode, volume buttons control temp threshold or humidity % threshold
+            volButtonMapping = CONTROLTEMP;
+            resolution = MINRES;
+          }
+          break;
+      
+      //Raise the threshold indicated by volButtonMapping
+      case VOLUP:
+        switch(volButtonMapping){
+          case CONTROLTEMP:
+            setTemp++;
             break;
+          case CONTROLHUMID:
+            setHumid = min(100, setHumid+1);
+            break;
+          case CONTROLFAN:
+            resolution = min(MAXRES, resolution + RESSTEP);
+            analogWrite(ENABLE, resolution);
+            break;
+        }
+        //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
+        break;
+
+      //Lower the threshold indicated by volButtonMapping
+      case VOLDOWN:
+        switch(volButtonMapping){
+          case CONTROLTEMP:
+            setTemp--;
+            break;
+          case CONTROLHUMID:
+            setHumid--;
+            break;
+          case CONTROLFAN:
+            resolution = max(MINRES, resolution - RESSTEP);
+            analogWrite(ENABLE, resolution);
+            break;
+        }
+        break;
+  
+      case FASTFOR:
+        switch(volButtonMapping){
+          case CONTROLTEMP:
+            setTemp += increment;
+            break;
+          case CONTROLHUMID:
+            setHumid += increment;
+            break;
+          case CONTROLFAN:
+            resolution = min(MAXRES, resolution + (RESSTEP * 2));
+            analogWrite(ENABLE, resolution);
+            break;
+        }
+        break;
+  
+      case REWIND:
+        switch(volButtonMapping){
+          case CONTROLTEMP:
+            setTemp -= increment;
+            break;
+          case CONTROLHUMID:
+            setHumid -= increment;
+            break;
+          case CONTROLFAN:
+            resolution = max(MINRES, resolution - (RESSTEP * 2));
+            analogWrite(ENABLE, resolution);
+            break;
+        }
+        break;
+  
+      case PAUSE:
+        switch(volButtonMapping){
+          case CONTROLTEMP:
+            setTemp = DEFAULTTEMP;
+            break;
+          case CONTROLHUMID:
+            setHumid = DEFAULTHUMID;
+            break;
+          case CONTROLFAN:
+            if(resolution == OFF){
+              resolution = DEFAULTRES;
+            } else {
+              resolution = OFF;
+            }
+            analogWrite(ENABLE, resolution);
+            break;
+        }
+        break;
         
-        //Raise the threshold indicated by volButtonMapping
-        case VOLUP:
-          switch(volButtonMapping){
-            case CONTROLTEMP:
-              setTemp++;
-              break;
-            case CONTROLHUMID:
-              setHumid = min(100, setHumid+1);
-              break;
-            case CONTROLFAN:
-              resolution = min(MAXRES, resolution + RESSTEP);
-              WriteResolution();
-              break;
-          }
-          //printThresholdChange(); WILL BE REMOVED CURRENT USE SCREEN FOR SHOWING CURRENT SETTTINGS
-          break;
+      case EQ:
+        // In auto mode, vol buttons can control temp threshold or humidity % threshold
+        if(mode == AUTO) {
+          volButtonMapping=(volButtonMapping+1)%2;
+        }
+        break;
+      
+      // allow for changing increment size for FASTFOR and REWIND
+      // unfortunately no visual for this, so maybe leave out for final product
+      case UP:
+         switch(volButtonMapping){
+            incrment = min(20, increment * 2);
+         }
+         break;
+      case DOWN:
+         switch(volButtonMapping){
+            increment = max(5, increment / 2);
+         }
+         break;
+      
+      case POWER:
+        PoweredOff()
+        break;
 
-        //Lower the threshold indicated by volButtonMapping
-        case VOLDOWN:
-          switch(volButtonMapping){
-            case CONTROLTEMP:
-              setTemp--;
-              break;
-            case CONTROLHUMID:
-              setHumid--;
-              break;
-            case CONTROLFAN:
-              resolution = max(MINRES, resolution - RESSTEP);
-              WriteResolution();
-              break;
-          }
-          break;
+      
+      case STREPT:
+        ManualNavigation();
+        break;     
+      
+      //Maybe implement later?
+      case HOLD: 
+        break;
+      
+      default: 
+        break;
+  }
+}
 
-          case PAUSE:
-           switch(volButtonMapping){
-            case CONTROLTEMP:
-              setTemp = 30;
-              break;
-            case CONTROLHUMID:
-              setHumid = 45;
-              break;
-            case CONTROLFAN:
-              if(resolution == OFF){
-                resolution = (MINRES+MAXRES)/2;
-              } else {
-                resolution = OFF;
-              }
-              WriteResolution();
-              break;
-            }
-            break;
-          
-        case FUNC:
-          // In auto mode, vol buttons can control temp threshold or humidity % threshold
-          if(mode == AUTO) {
-            volButtonMapping=(volButtonMapping+1)%2;
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("VOL BUTTONS CONTROL ");
-            lcd.setCursor(0, 1);
-            switch(volButtonMapping){
-              case CONTROLTEMP:
-                lcd.print("DESIRED TEMP (AUTO)");
-                break;
-              case CONTROLHUMID:
-                lcd.print("DESIRED HUMID% (AUTO)");
-                break;
-            }
-            delay(2000);
-          }
-          break;
+// these potentially don't work and could be cleaned up
 
-        case ONE: 
+// powered off state
+void PoweredOff(){
+  lcd.clear();
+  
+  // probably a problematic area
+  bool deviceOff = true;
+  irrecv.resume(); // receive the next value
+  while(deviceOff == true){
+    if (irrecv.decode(&results)){
+      if(results == POWER){ // should re-enable device
+        deviceOff = false;
+      }
+      else irrecv.resume(); // receive the next value
+    }
+    delay(100);
+  }
+  // end of potentially problematic area 
+}
+
+// user manual
+void ManualNavigation(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("USER MANUAL");
+  lcd.setCursor(0, 1);
+  lcd.print("#:PAGE/ST:EXIT");
+  
+  // another potential problematic area
+  bool looking = true;
+  irrecv.resume(); // receive the next value
+  while(looking == true){
+    if (irrecv.decode(&results)){
+      switch
+        case ZERO:
           lcd.clear();
           lcd.setCursor(0, 0);
-          lcd.print("HELLLLOO");
-          delay(5000);
+          lcd.print("POWER TURNS");
+          lcd.setCursor(0, 1);
+          lcd.print("DEVICE ON/OFF");
+          irrecv.resume(); // receive the next value
           break;
-        
+        case ONE:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("FUNC SWITCHES");
+          lcd.setCursor(0, 1);
+          lcd.print("MODE AUTO/MANU");
+          irrecv.resume(); // receive the next value
+          break;
         case TWO:
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print("Give Us"); 
-          delay(2000); 
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print("A Pass");
-          delay(1000);
-          break;       
-        
-        //Maybe implement later?
-        case HOLD: 
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("IN MANUAL MODE");
+          lcd.setCursor(0, 1);
+          lcd.print("CTRL FAN SPEED");
+          irrecv.resume(); // receive the next value
           break;
-        
-        default: 
+        case THREE:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("IN AUTO MODE");
+          lcd.setCursor(0, 1);
+          lcd.print("CTRL THREASHOLD");
+          irrecv.resume(); // receive the next value
           break;
+        case FOUR;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("THRESHOLDS");
+          lcd.setCursor(0, 1);
+          lcd.print("TEMP/HUMID");
+          irrecv.resume(); // receive the next value
+          break;
+        case FIVE:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("EQ CHANGES");
+          lcd.setCursor(0, 1);
+          lcd.print("THRESHOLD");
+          irrecv.resume(); // receive the next value
+          break;
+        case SIX:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("PAUSE RESETS");
+          lcd.setCursor(0, 1);
+          lcd.print("TOGGLES FAN");
+          irrecv.resume(); // receive the next value
+          break;
+        case SEVEN:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("VOL +/-");
+          lcd.setCursor(0, 1);
+          lcd.print("MODIFY BY 1");
+          irrecv.resume(); // receive the next value
+          break;
+        case EIGHT:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("FORWARD/REWIND");
+          lcd.setCursor(0, 1);
+          lcd.print("MODIFY BY INC");
+          irrecv.resume(); // receive the next value
+          break;
+        case NINE:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("UP/DOWN ARROWS");
+          lcd.setCursor(0, 1);
+          lcd.print("MODIFY INC SIZE");
+          irrecv.resume(); // receive the next value
+          break;
+        case ST:
+          looking = false;
+          break;
+        default:
+          irrecv.resume(); // receive the next value
+          break;
+    }
+    delay(100);
   }
+  // end of potentially problematic area
 }
