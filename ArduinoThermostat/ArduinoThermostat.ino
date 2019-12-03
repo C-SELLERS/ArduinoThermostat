@@ -380,7 +380,7 @@ void ControlFunction(decode_results results){
 // powered off state
 void PoweredOff(){
   lcd.clear();
-  
+  analogWrite(ENABLE, 0);
   // probably a problematic area
   bool deviceOff = true;
   irrecv.resume(); // receive the next value
