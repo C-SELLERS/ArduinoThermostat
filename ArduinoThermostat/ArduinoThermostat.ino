@@ -48,7 +48,7 @@ DHT SENSOR
 // Defining Default TEMP, HUMIDITY, RES
 #define DEFAULTTEMP   30
 #define DEFAULTHUMID  45
-#define DEFUALTRES    120
+#define DEFAULTRES    120
 #define DEFAULTINC    5
 
 //Definition for operating modes
@@ -348,7 +348,7 @@ void ControlFunction(decode_results results){
       // unfortunately no visual for this, so maybe leave out for final product
       case UP:
          switch(volButtonMapping){
-            incrment = min(20, increment * 2);
+            increment = min(20, increment * 2);
          }
          break;
       case DOWN:
@@ -358,7 +358,7 @@ void ControlFunction(decode_results results){
          break;
       
       case POWER:
-        PoweredOff()
+        PoweredOff();
         break;
 
       
@@ -386,7 +386,7 @@ void PoweredOff(){
   irrecv.resume(); // receive the next value
   while(deviceOff == true){
     if (irrecv.decode(&results)){
-      if(results == POWER){ // should re-enable device
+      if(results.value == POWER){ // should re-enable device
         deviceOff = false;
       }
       else irrecv.resume(); // receive the next value
@@ -409,7 +409,7 @@ void ManualNavigation(){
   irrecv.resume(); // receive the next value
   while(looking == true){
     if (irrecv.decode(&results)){
-      switch
+      switch(results.value){
         case ZERO:
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -442,7 +442,7 @@ void ManualNavigation(){
           lcd.print("CTRL THREASHOLD");
           irrecv.resume(); // receive the next value
           break;
-        case FOUR;
+        case FOUR:
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("THRESHOLDS");
@@ -490,12 +490,13 @@ void ManualNavigation(){
           lcd.print("MODIFY INC SIZE");
           irrecv.resume(); // receive the next value
           break;
-        case ST:
+        case STREPT:
           looking = false;
           break;
         default:
           irrecv.resume(); // receive the next value
           break;
+      }
     }
     delay(100);
   }
